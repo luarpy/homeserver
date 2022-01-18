@@ -1,0 +1,201 @@
+version: '3'
+services:
+
+        # Ouroboros: Automatically update your running Docker containers to the latest available image
+        # https://github.com/pyouroboros/ouroboros
+        ouroboros:
+              container_name: ouroboros
+              hostname: ouroboros
+              image: pyouroboros/ouroboros
+              environment:
+                      - CLEANUP=true
+                      - INTERVAL=300
+                      - LOG_LEVEL=info
+                      - SELF_UPDATE=true
+                      - IGNORE=mongo influxdb postgres mariadb db
+                      - TZ=${TZ} 
+              restart: unless-stopped
+              volumes:
+                      - /var/run/docker.sock:/var/run/docker.sock
+        
+        transmission:
+                image: linuxserver/transmission
+                container_name: transmission
+                restart: unless-stopped
+                network_mode: host
+                ports:
+                        - 9091:9091
+                volumes:
+                        - ${DATA}/transmission:/config
+                        - ${DATA}/transmission/data:/data
+                        - ${MERGERFS}/downloads:/downloads
+                        - /etc/localtime:/etc/localtime:ro
+                environment:
+                        - PUID=${UID}
+                        - GPID=${GID}
+                        - TZ=${TZ}
+                        - UMASK=022
+
+        # Jellyfin - a self-hosted media server
+        # https://hub.docker.com/r/jellyfin/jellyfin
+        jellyfin:
+                container_name: jellyfin
+                image: jellyfin/jellyfin:latest
+                restart: unless-stopped
+                network_mode: host
+                ports:
+                        - 8096:8096
+                        - 8920:8920
+                environment:
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - TZ=${TZ}
+                          
+                volumes:
+                        - ${DATA}/jellyfin/config:/config
+                        - ${MERGERFS}/media/series:/series
+                        - ${MERGERFS}/media/movies:/movies
+
+        # Sonarr: series show tracker and downlaoder
+        # https://hub.docker.com/r/linuxserver/sonarr
+        sonarr:
+                container_name: sonarr
+                image: linuxserver/sonarr:latest
+                restart: unless-stopped
+                network_mode: host
+                ports:
+                        - 8989:8989
+                environment:
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - TZ=${TZ} 
+                volumes:
+                        - /etc/localtime:/etc/localtime:ro
+                        - ${DATA}/sonarr:/config # config files
+                        - ${MERGERFS}/media/series:/series # series shows folder
+                        - ${MERGERFS}/downloads:/downloads
+
+        # Radarr: series show tracker and downlaoder
+        # https://hub.docker.com/r/linuxserver/radarr
+        radarr:
+                container_name: radarr
+                image: linuxserver/radarr:latest
+                restart: unless-stopped
+                network_mode: host
+                ports:
+                        - 7878:7878
+                environment:
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - TZ=${TZ} 
+                volumes:
+                        - /etc/localtime:/etc/localtime:ro
+                        - ${DATA}/radarr:/config # config files
+                        - ${MERGERFS}/media/movies:/movies # movies folder
+                        - ${MERGERFS}/downloads:/downloads
+
+        # Jackett: Torrent indexer for Sonarr and Radarr
+        # https://hub.docker.com/r/linuxserver/jackett
+        jackett:
+                container_name: jackett
+                image: linuxserver/jackett:latest
+                restart: unless-stopped
+                network_mode: host
+                ports:
+                        - 9117:9117
+                environment:
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - TZ=${TZ} 
+                volumes:
+                        - /etc/localtime:/etc/localtime:ro
+                        - ${DATA}/jackett:/config # config files
+
+        # Homer: A fancy homepage for self-hosted services
+        # https://hub.docker.com/r/b4bz/homer
+        homer:
+                container_name: homer
+                image: b4bz/homer
+                restart: unless-stopped
+                network_mode: host
+                ports:
+                        - 8080:8080
+                environment:
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - TZ=${TZ} 
+                volumes:
+                        - ${DATA}/homer:/www/assets
+       
+
+        nextcloud:
+                image: nextcloud:latest
+                container_name: nextcloud
+                network_mode: host
+                ports:
+                        - 8081:80
+                restart: unless-stopped
+                volumes:
+                        - ${MERGERFS}/nextcloud:/var/www/html
+                        - ${DATA}/nextcloud:/var/www/html/config
+                        - ${DATA}/nextcloud/data:/var/www/html/data
+                        - /etc/localtime:/etc/localtime:ro
+                environment:
+                        - MYSQL_DATABASE=nextcloud
+                        - MYSQL_USER=nextcloud
+                        - MYSQL_HOST=mysql
+                        - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN}
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - TZ=${TZ} 
+                depends_on:
+                        - nextclouddb
+
+        gitea:
+                image: gitea/gitea:latest
+                container_name: gitea
+                environment:
+                        - PUID=${UID}
+                        - PGID=${GID}
+                        - GITEA__database__DB_TYPE=mysql
+                        - GITEA__database__HOST=db:3306
+                        - GITEA__database__NAME=gitea
+                        - GITEA__database__USER=gitea
+                        - GITEA__database__PASSWD=gitea
+                        - TZ=${TZ}
+
+                restart: unless-stopped
+                network_mode: host
+                volumes:
+                        - ${MERGERFS}/git:/data
+                        - /etc/timezone:/etc/timezone:ro
+                        - /etc/localtime:/etc/localtime:ro
+                ports:
+                        - 3000:3000
+                        - 222:22
+                depends_on:
+                        - giteadb
+ 
+        giteadb:
+                image: mysql:latest
+                restart: unless-stopped
+                container_name: gitea-mysqldb
+                environment:
+                        - MYSQL_ROOT_PASSWORD=gitea
+                        - MYSQL_USER=gitea
+                        - MYSQL_PASSWORD=mysql
+                        - MYSQL_DATABASE=gitea
+                volumes:
+                        - ${DATA}/gitea/mysql:/var/lib/mysql
+        nextclouddb:
+                image: mysql:latest
+                restart: unless-stopped
+                container_name: nextcloud-mysqldb
+                environment:
+                        - MYSQL_ROOT_PASSWORD=secret
+                        - MYSQL_USER=nextcloud
+                        - MYSQL_PASSWORD=mysql
+                        - MYSQL_DATABASE=nextcloud
+                volumes:
+                        - ${DATA}/nextcloud/mysql:/var/lib/mysql
+
