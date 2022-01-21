@@ -1,4 +1,4 @@
-# notthebee/homeserver
+# homeserver
 
 The docker-compose configuration I used to use for my home server/NAS.
 
