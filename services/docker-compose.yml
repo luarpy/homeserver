@@ -131,32 +131,42 @@ services:
         nextcloud:
                 image: nextcloud:latest
                 container_name: nextcloud
-                network_mode: host
                 ports:
                         - 8081:80
                 restart: unless-stopped
                 volumes:
                         - ${MERGERFS}/nextcloud:/var/www/html
-                        - ${DATA}/nextcloud:/var/www/html/config
-                        - ${DATA}/nextcloud/data:/var/www/html/data
                         - /etc/localtime:/etc/localtime:ro
                 environment:
                         - MYSQL_DATABASE=nextcloud
                         - MYSQL_USER=nextcloud
-                        - MYSQL_HOST=mysql
+                        - MYSQL_HOST=mariadb
                         - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN}
+                        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
                         - PUID=${UID}
                         - PGID=${GID}
                         - TZ=${TZ} 
                 depends_on:
                         - nextclouddb
+        nextclouddb:
+                image: mariadb:latest
+                command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+                restart: unless-stopped
+                container_name: nextclouddb
+                environment:
+                        - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+                        - MYSQL_USER=nextcloud
+                        - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+                        - MYSQL_DATABASE=nextcloud
+                volumes:
+                        - ${DATA}/nextcloud/mysql:/var/lib/mysql
 
         gitea:
                 image: gitea/gitea:latest
                 container_name: gitea
                 environment:
-                        - PUID=${UID}
-                        - PGID=${GID}
+                        - USER_UID=${UID}
+                        - USER_GID=${GID}
                         - GITEA__database__DB_TYPE=mysql
                         - GITEA__database__HOST=db:3306
                         - GITEA__database__NAME=gitea
@@ -165,7 +175,6 @@ services:
                         - TZ=${TZ}
 
                 restart: unless-stopped
-                network_mode: host
                 volumes:
                         - ${MERGERFS}/git:/data
                         - /etc/timezone:/etc/timezone:ro
@@ -183,19 +192,8 @@ services:
                 environment:
                         - MYSQL_ROOT_PASSWORD=gitea
                         - MYSQL_USER=gitea
-                        - MYSQL_PASSWORD=mysql
+                        - MYSQL_PASSWORD=gitea
                         - MYSQL_DATABASE=gitea
                 volumes:
                         - ${DATA}/gitea/mysql:/var/lib/mysql
-        nextclouddb:
-                image: mysql:latest
-                restart: unless-stopped
-                container_name: nextcloud-mysqldb
-                environment:
-                        - MYSQL_ROOT_PASSWORD=secret
-                        - MYSQL_USER=nextcloud
-                        - MYSQL_PASSWORD=mysql
-                        - MYSQL_DATABASE=nextcloud
-                volumes:
-                        - ${DATA}/nextcloud/mysql:/var/lib/mysql
-
+        
