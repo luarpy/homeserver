@@ -1,0 +1,48 @@
+version: '3.7'
+
+services:
+  wger:
+    container_name: wger
+    image: wger/server:latest
+    volumes:
+      - ${DATA}/wger/static:/home/wger/static
+      - ${DATA}/wger/media:/home/wger/media
+    ports:
+      - 8000
+    depends_on:
+      - wger_db
+      - cache
+
+  nginx:
+    container_name: wger_nginx
+    build: ./nginx
+    volumes:
+      - ${DATA}/wger/static:/wger/static:ro
+      - ${DATA}/wger/media:/wger/media:ro
+    ports:
+      - 8082:80
+    depends_on:
+      - wger
+
+  wger_db:
+    container_name: wger_db
+    image: postgres:12-alpine
+    volumes:
+      - ${DATA}/wger/postgres-data:/var/lib/postgresql/data/
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_USER=wger
+      - POSTGRES_PASSWORD=wger
+      - POSTGRES_DB=wger
+
+  cache:
+    restart: always
+    image: redis:latest
+    expose:
+      - 6379
+
+volumes:
+  postgres-data:
+  static:
+  media:
