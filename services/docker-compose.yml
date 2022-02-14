@@ -197,3 +197,10 @@ services:
                 volumes:
                         - ${DATA}/gitea/mysql:/var/lib/mysql
         
+
+        mygpo:
+                restart: unless-stopped
+                container_name: mygpo
+                build: ./mygpo
+                volumes:
+                        - ${DATA}/mygpo:/app
