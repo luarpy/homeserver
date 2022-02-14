@@ -3,6 +3,7 @@ version: '3.7'
 services:
   wger:
     container_name: wger
+    restart: unless-stopped
     image: wger/server:latest
     volumes:
       - ${DATA}/wger/static:/home/wger/static
@@ -15,6 +16,7 @@ services:
 
   nginx:
     container_name: wger_nginx
+    restart: unless-stopped
     build: ./nginx
     volumes:
       - ${DATA}/wger/static:/wger/static:ro
@@ -27,6 +29,7 @@ services:
   wger_db:
     container_name: wger_db
     image: postgres:12-alpine
+    restart: unless-stopped
     volumes:
       - ${DATA}/wger/postgres-data:/var/lib/postgresql/data/
     expose:
